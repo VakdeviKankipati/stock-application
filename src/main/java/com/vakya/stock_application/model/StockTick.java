@@ -14,5 +14,5 @@ import java.time.LocalDateTime;
 public class StockTick {
     private String symbol;
     private double price;
-//    private LocalDateTime timestamp;
+    private LocalDateTime timestamp;
 }

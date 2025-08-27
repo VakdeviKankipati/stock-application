@@ -307,7 +307,8 @@
             <tr th:each="stock : ${stocks}">
                 <td class="symbol" th:text="${stock.symbol}"></td>
                 <td class="price" th:text="${stock.price}"></td>
-<!--                <td class="timestamp" th:text="${stock.timestamp}">2024-01-15 09:30:00</td>-->
+<!--                <td class="timestamp" th:text="${stock.timestamp}"></td>-->
+                <td th:text="${#temporals.format(stock.timestamp, 'yyyy-MM-dd')}"></td>
             </tr>
 
             <!-- Sample rows for demonstration -->

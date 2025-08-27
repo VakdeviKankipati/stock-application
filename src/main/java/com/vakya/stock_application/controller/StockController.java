@@ -11,6 +11,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.Arrays;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Controller
 public class StockController {
@@ -53,24 +54,30 @@ public class StockController {
     public Mono<String> getStock(@RequestParam(value = "symbols", required = false) String symbolsCsv, Model model) {
         List<String> symbols = symbolsCsv != null && !symbolsCsv.isBlank() ?
                 Arrays.stream(symbolsCsv.split(",")) .map(String::trim)
-                        .filter(s -> !s.isEmpty()) .toList() : List.of("IBM", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA");
+                        .filter(s -> !s.isEmpty()) .toList()
+                : List.of("IBM", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA");
         return Flux.fromIterable(symbols)
                 .delayElements(java.time.Duration.ofMillis(300))
                 .flatMap(symbol -> stockService.getStockPrice(symbol)
                         .switchIfEmpty(redisService.getStockTick(symbol))
-                        .flatMap(tick -> tick != null
-                                ? redisService.saveStockTick(tick).thenReturn(tick)
-                                : Mono.empty()))
+                        .flatMap(tick -> {
+                            if (tick == null) {
+                                return Mono.empty();
+                            }
+                            if (tick.getTimestamp() == null) {
+                                tick.setTimestamp(LocalDateTime.now());
+                            }
+                            return redisService.saveStockTick(tick).thenReturn(tick);
+                        }))
                 .collectList()
                 .doOnNext(ticks -> {
                     model.addAttribute("stocks", ticks);
                     if (ticks.isEmpty()) {
-                        model.addAttribute("message", "No data available. Try fewer symbols or check API key/rate limits.");
+                        model.addAttribute("message",
+                                "No data available. Try fewer symbols or check API key/rate limits.");
                     }
                 })
                 .thenReturn("stocks");
     }
-
-
 }
 

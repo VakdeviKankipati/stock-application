@@ -31,18 +31,32 @@ public class StockService {
                 .flatMap(node -> {
                     JsonNode quote = node.get("Global Quote");
                     if (quote == null || quote.isNull()) {
-                        // Rate limit or invalid response – skip this symbol
                         return Mono.empty();
                     }
+
                     String priceText = quote.path("05. price").asText();
+                    String dateText = quote.path("07. latest trading day").asText();
+
                     if (priceText == null || priceText.isBlank()) {
                         return Mono.empty();
                     }
+
                     double price = Double.parseDouble(priceText);
                     StockTick tick = new StockTick();
                     tick.setSymbol(symbol);
                     tick.setPrice(price);
+
+                    if (dateText != null && !dateText.isBlank()) {
+                        tick.setTimestamp(java.time.LocalDateTime.now());
+                        System.out.println("Response for " + symbol + ": " + node.toPrettyString());
+
+//                        tick.setTimestamp(java.time.LocalDate.parse(dateText).atStartOfDay());
+                    } else {
+                        tick.setTimestamp(java.time.LocalDateTime.now()); // fallback
+                    }
+
                     return Mono.just(tick);
                 });
     }
+
 }
