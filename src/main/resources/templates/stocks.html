@@ -283,6 +283,7 @@
     </div>
 
     <div class="table-container">
+        <div th:if="${message}" th:text="${message}" style="color: #b91c1c; margin-bottom: 12px;"></div>
         <div class="last-updated">Last updated: <span id="lastUpdate"></span></div>
 
         <table>
@@ -294,6 +295,9 @@
             </tr>
             </thead>
             <tbody>
+            <tr th:if="${#lists.isEmpty(stocks)}">
+                <td colspan="3">No data to display. Try fewer symbols or check API key.</td>
+            </tr>
 
 <!--            <tr th:each="stock : ${stocks}">-->
 <!--                <td class="symbol" th:text="${stock.symbol}">AAPL</td>-->
