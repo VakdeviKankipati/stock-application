@@ -1,7 +1,6 @@
 package com.vakya.stock_application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vakya.stock_application.model.StockTick;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,31 +10,39 @@ import reactor.core.publisher.Mono;
 @Service
 public class StockService {
     private final WebClient webClient;
-    private final ObjectMapper objectMapper;
 
     @Value("${alphavantage.api.key}")
     private String apiKey;
-    public StockService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
+
+    public StockService(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.baseUrl("https://www.alphavantage.co").build();
-        this.objectMapper = objectMapper;
     }
 
     public Mono<StockTick> getStockPrice(String symbol) {
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder .path("/query")
+                .uri(uriBuilder -> uriBuilder
+                        .path("/query")
                         .queryParam("function", "GLOBAL_QUOTE")
-                        .queryParam("symbol", symbol) .queryParam("apikey", apiKey)
+                        .queryParam("symbol", symbol)
+                        .queryParam("apikey", apiKey)
                         .build())
                 .retrieve()
-                .bodyToMono(String.class)
-                .map(json -> {
-                    String price = json.split("\"05. price\": \"")[1].split("\"")[0];
+                .bodyToMono(JsonNode.class)
+                .flatMap(node -> {
+                    JsonNode quote = node.get("Global Quote");
+                    if (quote == null || quote.isNull()) {
+                        // Rate limit or invalid response – skip this symbol
+                        return Mono.empty();
+                    }
+                    String priceText = quote.path("05. price").asText();
+                    if (priceText == null || priceText.isBlank()) {
+                        return Mono.empty();
+                    }
+                    double price = Double.parseDouble(priceText);
                     StockTick tick = new StockTick();
                     tick.setSymbol(symbol);
-//                    tick.setPrice(Double.parseDouble(price));
-                    return tick;
+                    tick.setPrice(price);
+                    return Mono.just(tick);
                 });
     }
-
-
 }
