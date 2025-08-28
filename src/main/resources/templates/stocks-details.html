@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Stocks - Live Market Data</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><pattern id="grain" width="100" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="30" cy="15" r="0.3" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="5" r="0.4" fill="rgba(255,255,255,0.08)"/><circle cx="70" cy="12" r="0.2" fill="rgba(255,255,255,0.06)"/><circle cx="90" cy="8" r="0.3" fill="rgba(255,255,255,0.04)"/></pattern></defs><rect width="100" height="20" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+
+        .market-status {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #16a34a;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .market-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #16a34a;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .table-container {
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        .last-updated {
+            text-align: right;
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+
+        th {
+            padding: 20px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+            letter-spacing: 0.025em;
+            border-bottom: 2px solid #e5e7eb;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        th::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        th:hover::after {
+            transform: scaleX(1);
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tbody tr:hover {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        td {
+            padding: 18px 16px;
+            color: #374151;
+            font-weight: 500;
+            vertical-align: middle;
+            font-size: 0.95rem;
+        }
+
+        .symbol {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1f2937;
+            letter-spacing: 0.025em;
+        }
+
+        .price, .open, .high, .low, .previous-close {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #059669;
+            position: relative;
+        }
+
+        .price::before, .open::before, .high::before, .low::before, .previous-close::before {
+            content: '$';
+            color: #6b7280;
+            font-weight: 500;
+            margin-right: 2px;
+        }
+
+        .volume {
+            color: #4338ca;
+            font-weight: 600;
+        }
+
+        .change {
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .change.positive {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .change.negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .change-percent {
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .change-percent.positive {
+            background: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .change-percent.negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .trading-day {
+            color: #6b7280;
+            font-size: 0.9rem;
+            font-weight: 400;
+        }
+
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .footer {
+            background: #f8fafc;
+            padding: 20px 30px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            th, td {
+                padding: 12px 8px;
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .table-container {
+                padding: 20px;
+            }
+
+            th, td {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+
+            table {
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            /* Stack table for very small screens */
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr {
+                border: 1px solid #e5e7eb;
+                margin-bottom: 10px;
+                border-radius: 8px;
+                background: white;
+                padding: 10px;
+            }
+
+            td {
+                border: none;
+                border-bottom: 1px solid #eee;
+                position: relative;
+                padding-left: 50% !important;
+                text-align: left;
+            }
+
+            td:before {
+                content: attr(data-label) ": ";
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                font-weight: 600;
+                color: #374151;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Detailed Stock Prices</h1>
+        <p class="subtitle">Comprehensive real-time market data & analytics</p>
+        <div class="market-status">Market Open</div>
+    </div>
+
+    <div class="table-container">
+        <div class="last-updated">Last updated: <span id="lastUpdate"></span></div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Open</th>
+                <th>High</th>
+                <th>Low</th>
+                <th>Price</th>
+                <th>Volume</th>
+                <th>Latest Trading Day</th>
+                <th>Previous Close</th>
+                <th>Change</th>
+                <th>Change %</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="stock : ${stocks}">
+                <td class="symbol" th:text="${stock.symbol}" data-label="Symbol"></td>
+                <td class="open" th:text="${stock.open}" data-label="Open"></td>
+                <td class="high" th:text="${stock.high}" data-label="High"></td>
+                <td class="low" th:text="${stock.low}" data-label="Low"></td>
+                <td class="price" th:text="${stock.price}" data-label="Price"></td>
+                <td class="volume" th:text="${stock.volume}" data-label="Volume"></td>
+                <td class="trading-day" th:text="${stock.latestTradingDay}" data-label="Latest Trading Day"></td>
+                <td class="previous-close" th:text="${stock.previousClose}" data-label="Previous Close"></td>
+                <td class="change" th:text="${stock.change}"
+                    th:classappend="${#strings.startsWith(stock.change, '-')} ? 'negative' : 'positive'"
+                    data-label="Change"></td>
+                <td class="change-percent" th:text="${stock.changePercent}"
+                    th:classappend="${#strings.startsWith(stock.changePercent, '-')} ? 'negative' : 'positive'"
+                    data-label="Change %"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 Stock Market Dashboard. Data provided for informational purposes only.</p>
+    </div>
+</div>
+
+<script>
+    // Update the last updated timestamp
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+
+    // Simulate real-time updates (optional)
+    setInterval(() => {
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+    }, 30000); // Update every 30 seconds
+</script>
+</body>
+</html>
